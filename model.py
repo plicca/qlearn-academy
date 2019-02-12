@@ -17,7 +17,7 @@ class DeepQNetwork(nn.Module):
         self.fc2 = nn.Linear(512, 6)
         # self.optimizer = optim.SGD(self.parameters(), lr=self.ALPHA, momentum=0.9)
         self.optimizer = optim.RMSprop(self.parameters(), lr=ALPHA)
-        self.loss = nn.MSELoss()
+        self.loss = nn.SmoothL1Loss()
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')
         self.to(self.device)
 
@@ -101,7 +101,7 @@ class Agent(object):
                 self.EPSILON = self.EPS_END
 
         # Qpred.requires_grad_()
-        loss = self.Q_eval.loss(Qtarget, Qpred).to(self.Q_eval.device)
+        loss = self.Q_eval.loss(Qpred, Qtarget).to(self.Q_eval.device)
         loss.backward()
         self.Q_eval.optimizer.step()
         self.learn_step_counter += 1
