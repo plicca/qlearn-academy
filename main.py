@@ -2,24 +2,24 @@ import gym
 import torch
 import pickle
 from model import DeepQNetwork, Agent
-from multiprocessing import Pool
 import torch.multiprocessing as mp
-import multiprocessing
 import numpy as np
 import time
-from tqdm import *
-from gym import wrappers
 
 import threading
 
 brains = []
+scores = []
+epsHistory = []
+numGames = 1
+batch_size = 8
 
-def play(brain):
+def play(brain, id):
     print('test')
     numGames = 1
     for i in range(numGames):
         #for j in tqdm():
-        print('starting game ', i+1, 'epsilon: %.4f' % brain.EPSILON)
+        print('ID : ', id, ',starting game ', i+1, 'epsilon: %.4f' % brain.EPSILON)
         epsHistory.append(brain.EPSILON)
         done = False
         env = gym.make('SpaceInvaders-v0')
@@ -33,7 +33,7 @@ def play(brain):
                 action = brain.chooseAction(frames)
                 frames = []
                 current_time = time.clock()
-                print(current_time - delta)
+                print('ID: ', id, ' - ', current_time - delta)
                 delta = current_time
             else:
                 action = lastAction
@@ -68,9 +68,9 @@ if __name__ == '__main__':
     env.render()
     env.close()
 #
-    brain.Q_eval.load_state_dict(torch.load("/home/plicca/PycharmProjects/sp/qeval"))
-    brain.Q_next.load_state_dict(torch.load("/home/plicca/PycharmProjects/sp/qnext"))
-    brain.memory = pickle.load(open("/home/plicca/PycharmProjects/sp/mem.npy", 'rb'))
+    brain.Q_eval.load_state_dict(torch.load("/home/plicca/code/qlearn-academy/qeval.pth"))
+    brain.Q_next.load_state_dict(torch.load("/home/plicca/code/qlearn-academy/qnext.pth"))
+    brain.memory = pickle.load(open("/home/plicca/code/qlearn-academy/mem.npy", 'rb'))
     # torch.save(brain.Q_eval.state_dict(), "/home/plicca/PycharmProjects/sp/qeval")
     # torch.save(brain.Q_next.state_dict(), "/home/plicca/PycharmProjects/sp/qnext")
     # print("Brain saved");
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     # print("Memory saved")
     # print('done initializing memory')
     #env.close()
-
+    mp.set_start_method('spawn')
     scores = []
     epsHistory = []
     numGames = 1
@@ -101,11 +101,20 @@ if __name__ == '__main__':
     # env = wrappers.Monitor(env, "tmp/space-invaders-1", video_callable=lambda episode_id: True, force=True)
     #env = gym.make('SpaceInvaders-v0')
     #env.close()
-    p = Pool(4)
-    for i in range(4):
-        brains.append(brain)
-    p.map(play, brains)
-   # [p.apply(play, args=()) for i in range(0, 1)]
+    num_processes = 2
+    brain.Q_next.share_memory()
+    brain.Q_eval.share_memory()
+    processes = []
+    id = 1
+    for rank in range (num_processes):
+        p = mp.Process(target=play, args=(brain, id))
+        p.start()
+        processes.append(p)
+        id += 1
+    for p in processes:
+        p.join()
+
+    # [p.apply(play, args=()) for i in range(0, 1)]
 
     #for i in range(numGames):
 #
